@@ -1,0 +1,262 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Bloco de Notas</title>
+    
+    <style>
+        * { 
+            margin: 0; 
+            padding: 0; 
+            box-sizing: border-box; 
+        }
+
+        /* === ESTRUTURA DE LAYOUT NOVA E ROBUSTA (CSS GRID) === */
+        html {
+            height: 100%;
+        }
+        
+        body {
+            height: 100%;
+            display: grid; /* Ativa o layout Grid */
+            grid-template-rows: auto 1fr auto; /* Cabeçalho(auto) | Editor(ocupa o resto) | Rodapé(auto) */
+            overflow: hidden; /* Previne a rolagem do corpo da página */
+            background: var(--bg-primary); 
+            color: var(--text-primary);
+            font-family: var(--font-editor);
+            -webkit-tap-highlight-color: transparent;
+        }
+        
+        :root {
+            --c-bg-light: #ffffff; --c-text-light: #1f1f1f; --c-border-light: #e5e5e5; --c-accent-light: #0074e0; --c-secondary-light: #f9f9f9; --c-hover-light: #f0f0f0; --c-active-light: #e0e0e0;
+            --c-bg-dark: #202020; --c-text-dark: #ffffff; --c-border-dark: #3d3d3d; --c-accent-dark: #60cdff; --c-secondary-dark: #2d2d2d; --c-hover-dark: #3a3a3a; --c-active-dark: #404040;
+            --c-bg-sepia: #f4f0e8; --c-text-sepia: #5b4636; --c-border-sepia: #d8d2c6; --c-accent-sepia: #6e5847; --c-secondary-sepia: #e9e4d9; --c-hover-sepia: #d8d2c6; --c-active-sepia: #c8c0b3;
+            --f-sans-serif: 'Segoe UI', -apple-system, BlinkMacSystemFont, 'Roboto', sans-serif;
+            --f-serif: Georgia, 'Times New Roman', serif;
+            --f-mono: 'Cascadia Mono', 'Consolas', 'Courier New', monospace;
+            --shadow: 0 1px 2px rgba(0,0,0,0.04), 0 2px 8px rgba(0,0,0,0.04);
+        }
+
+        /* Sistema de Classes para Temas e Fontes */
+        body.theme-light { --bg-primary: var(--c-bg-light); --text-primary: var(--c-text-light); --border: var(--c-border-light); --accent: var(--c-accent-light); --bg-secondary: var(--c-secondary-light); --hover: var(--c-hover-light); --active: var(--c-active-light); }
+        body.theme-dark  { --bg-primary: var(--c-bg-dark);  --text-primary: var(--c-text-dark);  --border: var(--c-border-dark);  --accent: var(--c-accent-dark);  --bg-secondary: var(--c-secondary-dark);  --hover: var(--c-hover-dark);  --active: var(--c-active-dark);  }
+        body.theme-sepia { --bg-primary: var(--c-bg-sepia); --text-primary: var(--c-text-sepia); --border: var(--c-border-sepia); --accent: var(--c-accent-sepia); --bg-secondary: var(--c-secondary-sepia); --hover: var(--c-hover-sepia); --active: var(--c-active-sepia); }
+
+        body.font-sans-serif { --font-editor: var(--f-sans-serif); }
+        body.font-serif      { --font-editor: var(--f-serif); }
+        body.font-mono       { --font-editor: var(--f-mono); }
+        
+        .header { background: var(--bg-secondary); border-bottom: 1px solid var(--border); box-shadow: var(--shadow); }
+        .title-bar { display: flex; align-items: center; padding: 8px 16px; gap: 12px; }
+        .app-icon { width: 20px; height: 20px; }
+        .app-title { font-size: 13px; font-weight: 400; flex: 1; font-family: 'Segoe UI', sans-serif; }
+        .menu-bar { display: flex; padding: 0 8px; height: 40px; align-items: center; gap: 2px; flex-wrap: wrap; }
+        .menu-item { padding: 6px 12px; font-size: 13px; color: var(--text-primary); background: none; border: none; border-radius: 4px; cursor: pointer; transition: background 0.1s; font-family: 'Segoe UI', sans-serif; white-space: nowrap; }
+        .menu-item:hover { background: var(--hover); }
+        .menu-item:active { background: var(--active); }
+        
+        /* O editor agora é a única área com rolagem */
+        .editor-container { 
+            overflow: auto; /* Permite a rolagem apenas nesta área */
+            -webkit-overflow-scrolling: touch; 
+        }
+        #editor { 
+            width: 100%; 
+            height: 100%; /* Ocupa 100% do container pai */
+            padding: 16px 20px; 
+            background: var(--bg-primary); 
+            border: none; 
+            outline: none; 
+            color: var(--text-primary); 
+            font-size: 14px; 
+            line-height: 1.6; 
+            resize: none; 
+            font-family: inherit; 
+        }
+        
+        /* A barra de status agora faz parte do Grid, não é mais 'fixed' ou 'relative' */
+        .status-bar {
+            background: var(--bg-secondary);
+            border-top: 1px solid var(--border);
+            padding: 8px 16px;
+            font-size: 12px;
+            color: var(--text-primary);
+            font-family: 'Segoe UI', sans-serif;
+            min-height: 32px;
+        }
+        .stats-container { display: flex; align-items: center; flex-wrap: wrap; gap: 8px 16px; }
+        .stat-item { display: inline-flex; align-items: center; white-space: nowrap; font-weight: 400; }
+        .stat-number { margin-right: 4px; font-weight: 600; color: var(--accent); }
+        .stat-divider { color: var(--border); margin: 0 4px; font-weight: 300; }
+
+        .save-popup { position: fixed; top: 60px; right: 20px; background: var(--bg-secondary); padding: 12px 16px; border-radius: 8px; font-size: 13px; color: var(--text-primary); opacity: 0; transform: translateY(-10px); transition: all 0.2s; pointer-events: none; box-shadow: var(--shadow); border: 1px solid var(--border); z-index: 2000; }
+        .save-popup.show { opacity: 1; transform: translateY(0); }
+        .modal-overlay { position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.3); display: flex; align-items: center; justify-content: center; opacity: 0; pointer-events: none; transition: opacity 0.2s; z-index: 1000; }
+        .modal-overlay.show { opacity: 1; pointer-events: auto; }
+        .modal { background: var(--bg-primary); border-radius: 8px; padding: 24px; min-width: 320px; max-width: 90vw; box-shadow: 0 8px 32px rgba(0,0,0,0.2); transform: scale(0.95); transition: transform 0.2s; }
+        .modal h3 { font-size: 16px; font-weight: 600; margin-bottom: 20px; }
+        .modal-buttons { display: flex; gap: 8px; justify-content: flex-end; flex-wrap: wrap; }
+        .btn { padding: 6px 20px; font-size: 13px; border: none; border-radius: 4px; cursor: pointer; transition: all 0.1s; font-family: 'Segoe UI', sans-serif; white-space: nowrap; }
+    </style>
+</head>
+<body class="theme-light font-mono">
+    <div class="header">
+        <div class="title-bar">
+            <svg class="app-icon" viewBox="0 0 24 24" fill="var(--accent)"><path d="M14,2H6A2,2 0 0,0 4,4V20A2,2 0 0,0 6,22H18A2,2 0 0,0 20,20V8L14,2M18,20H6V4H13V9H18V20Z"/></svg>
+            <span class="app-title">Bloco de Notas</span>
+        </div>
+        <div class="menu-bar">
+            <button id="btn-save" class="menu-item">Salvar</button>
+            <button id="btn-copy" class="menu-item">Copiar</button>
+            <button id="btn-font" class="menu-item">Fontes</button>
+            <button id="btn-theme" class="menu-item">Temas</button>
+        </div>
+    </div>
+    
+    <div class="editor-container">
+        <textarea id="editor" placeholder="Digite algo..." autocomplete="off" autocorrect="on" autocapitalize="sentences" spellcheck="true"></textarea>
+    </div>
+    
+    <div class="status-bar">
+        <div class="stats-container">
+            <span class="stat-item" id="lineInfo">Ln 1, Col 1</span>
+            <span class="stat-divider">|</span>
+            <span class="stat-item"><span class="stat-number" id="letter-count">0</span>letras</span><span class="stat-divider">|</span>
+            <span class="stat-item"><span class="stat-number" id="space-count">0</span>espaços</span><span class="stat-divider">|</span>
+            <span class="stat-item"><span class="stat-number" id="word-count">0</span>palavras</span><span class="stat-divider">|</span>
+            <span class="stat-item"><span class="stat-number" id="sentence-count">0</span>sentenças</span><span class="stat-divider">|</span>
+            <span class="stat-item"><span class="stat-number" id="paragraph-count">0</span>parágrafos</span>
+        </div>
+    </div>
+    
+    <div class="save-popup" id="savePopup">✓ Pronto!</div>
+    
+    <div class="modal-overlay" id="modalOverlay">
+        <div class="modal">
+            <h3 id="modalTitle">Salvar Arquivo</h3>
+            <div class="modal-buttons">
+                <button class="btn btn-secondary" id="btn-download-txt">Salvar .txt</button>
+                <button class="btn btn-primary" id="btn-download-md">Salvar .md</button>
+                <button class="btn btn-secondary" id="btn-cancel-modal">Cancelar</button>
+            </div>
+        </div>
+    </div>
+    
+    <script>
+    // O JavaScript não precisa de nenhuma alteração, pois o problema era 100% de CSS
+    document.addEventListener('DOMContentLoaded', () => {
+        const editor = document.getElementById('editor');
+        const savePopup = document.getElementById('savePopup');
+        const modalOverlay = document.getElementById('modalOverlay');
+        const lineInfo = document.getElementById('lineInfo');
+        const body = document.body;
+        const letterCount = document.getElementById('letter-count');
+        const spaceCount = document.getElementById('space-count');
+        const wordCount = document.getElementById('word-count');
+        const sentenceCount = document.getElementById('sentence-count');
+        const paragraphCount = document.getElementById('paragraph-count');
+        const themes = ['theme-light', 'theme-dark', 'theme-sepia'];
+        const fonts = ['font-mono', 'font-sans-serif', 'font-serif'];
+        let currentThemeIndex = 0;
+        let currentFontIndex = 0;
+        function cycleClass(element, classList, currentIndex, storageKey) {
+            element.classList.remove(classList[currentIndex]);
+            const nextIndex = (currentIndex + 1) % classList.length;
+            element.classList.add(classList[nextIndex]);
+            localStorage.setItem(storageKey, classList[nextIndex]);
+            return nextIndex;
+        }
+        function countSentences(text) {
+            if (!text.trim()) return 0;
+            const cleanText = text.replace(/\s+/g, ' ').trim();
+            const sentences = cleanText.split(/[.!?]+/).filter(sentence => {
+                const trimmed = sentence.trim();
+                return trimmed.length > 0 && !trimmed.match(/^[A-Z][a-z]?$/);
+            });
+            return Math.max(sentences.length, 0);
+        }
+        function updateAllStats() {
+            const text = editor.value;
+            const letters = text.replace(/\s/g, '').length;
+            const spaces = (text.match(/ /g) || []).length;
+            const words = text.trim() === '' ? 0 : text.trim().split(/\s+/).length;
+            const sentences = countSentences(text);
+            const paragraphs = text.split(/\n+/).filter(p => p.trim().length > 0).length;
+            const textToCursor = text.substring(0, editor.selectionStart);
+            const lines = textToCursor.split('\n');
+            const currentLine = lines.length;
+            const currentColumn = lines[lines.length - 1].length + 1;
+            if (letterCount) letterCount.textContent = letters;
+            if (spaceCount) spaceCount.textContent = spaces;
+            if (wordCount) wordCount.textContent = words;
+            if (sentenceCount) sentenceCount.textContent = sentences;
+            if (paragraphCount) paragraphCount.textContent = paragraphs;
+            if (lineInfo) lineInfo.textContent = `Ln ${currentLine}, Col ${currentColumn}`;
+        }
+        function autoSave() {
+            try { localStorage.setItem('notepad_content', editor.value); } 
+            catch (e) { console.error('Erro no localStorage:', e); }
+        }
+        editor.addEventListener('input', () => { updateAllStats(); autoSave(); });
+        editor.addEventListener('keyup', updateAllStats);
+        editor.addEventListener('click', updateAllStats);
+        editor.addEventListener('selectionchange', updateAllStats);
+        function showPopup(message) {
+            savePopup.textContent = message;
+            savePopup.classList.add('show');
+            setTimeout(() => savePopup.classList.remove('show'), 2000);
+        }
+        function showSaveModal() { modalOverlay.classList.add('show'); }
+        function closeModal() { modalOverlay.classList.remove('show'); }
+        document.getElementById('btn-save').addEventListener('click', showSaveModal);
+        document.getElementById('btn-copy').addEventListener('click', () => {
+            if (editor.value) {
+                navigator.clipboard.writeText(editor.value)
+                    .then(() => showPopup('✓ Copiado!'))
+                    .catch(() => showPopup('⚠️ Erro ao copiar'));
+            } else { showPopup('Nada para copiar'); }
+        });
+        document.getElementById('btn-font').addEventListener('click', () => {
+            currentFontIndex = cycleClass(body, fonts, currentFontIndex, 'notepadFont');
+            let fontName = fonts[currentFontIndex].split('-')[1];
+            showPopup(`✓ Fonte: ${fontName.charAt(0).toUpperCase() + fontName.slice(1)}`);
+        });
+        document.getElementById('btn-theme').addEventListener('click', () => {
+            currentThemeIndex = cycleClass(body, themes, currentThemeIndex, 'notepadTheme');
+            let themeName = themes[currentThemeIndex].split('-')[1];
+            showPopup(`✓ Tema: ${themeName.charAt(0).toUpperCase() + themeName.slice(1)}`);
+        });
+        function downloadFile(filename, content, mimeType) {
+            const el = document.createElement('a');
+            el.href = URL.createObjectURL(new Blob([content], { type: mimeType }));
+            el.download = filename;
+            document.body.appendChild(el);
+            el.click();
+            document.body.removeChild(el);
+            closeModal();
+        }
+        document.getElementById('btn-download-txt').addEventListener('click', () => downloadFile('nota.txt', editor.value, 'text/plain'));
+        document.getElementById('btn-download-md').addEventListener('click', () => downloadFile('nota.md', editor.value, 'text/markdown'));
+        document.getElementById('btn-cancel-modal').addEventListener('click', closeModal);
+        function initializeApp() {
+            try {
+                const savedContent = localStorage.getItem('notepad_content') || '';
+                editor.value = savedContent;
+            } catch (e) {}
+            const savedTheme = localStorage.getItem('notepadTheme') || themes[0];
+            body.classList.remove(themes[0]);
+            body.classList.add(savedTheme);
+            currentThemeIndex = themes.indexOf(savedTheme);
+            const savedFont = localStorage.getItem('notepadFont') || fonts[0];
+            body.classList.remove(fonts[0]);
+            body.classList.add(savedFont);
+            currentFontIndex = fonts.indexOf(savedFont);
+            updateAllStats();
+            setTimeout(() => { editor.focus(); }, 100);
+        }
+        initializeApp();
+    });
+    </script>
+</body>
+</html>
